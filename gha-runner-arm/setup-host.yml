@@ -1,0 +1,40 @@
+---
+- hosts: host
+  tasks:
+    - import_tasks: tasks/install_ssh_keys.yml
+- hosts: host
+  become: true
+  tasks:
+    - name: Set hostname
+      hostname: name={{inventory_hostname}} use=systemd
+    - import_tasks: tasks/setup_ssh.yml
+    - name: Install software
+      block:
+        - apt: update_cache=yes upgrade=yes
+        - package:
+            name:
+              - mosh
+              - tmux
+              - vim
+              - htop
+              - virtinst
+              - libvirt-clients
+              - libvirt-daemon-system
+              - libnss-libvirt
+              - cloud-image-utils
+              - osinfo-db-tools
+              - qemu-efi-aarch64
+              - qemu-efi-arm
+    - name: Setup NSS config for libvirt
+      replace:
+        path: /etc/nsswitch.conf
+        regexp: '(hosts:\s+files )(?:libvirt libvirt_guest )?'
+        replace: '\1libvirt libvirt_guest '
+    - name: Setup firewall
+      block:
+        - ufw: state=reset
+        - ufw: rule=allow name=OpenSSH
+        - ufw: rule=allow name=mosh
+        - ufw: state=enabled
+  handlers:
+    - import_tasks: tasks/handlers.yml

@@ -1,0 +1,71 @@
+---
+- hosts: host
+  become: true
+  vars:
+    ubuntu_version: "20.04"
+    osinfo_db_version: "20200529"
+    vms: "{{groups['vms_aarch64']}}"
+  tasks:
+    - name: Download Ubuntu base image
+      block:
+        - stat: path=/var/lib/libvirt/images/ubuntu-{{ubuntu_version}}-server-cloudimg-arm64.img
+          register: base_image
+        - get_url:
+            url: http://cloud-images.ubuntu.com/releases/focal/release/ubuntu-{{ubuntu_version}}-server-cloudimg-arm64.img
+            dest: /var/lib/libvirt/images/ubuntu-{{ubuntu_version}}-server-cloudimg-arm64.img
+          when: not base_image.stat.exists
+    - name: Update osinfo database
+      block:
+        - stat: path=/root/osinfo-db-{{osinfo_db_version}}.tar.xz
+          register: osinfo_db
+        - get_url:
+            url: https://releases.pagure.org/libosinfo/osinfo-db-{{osinfo_db_version}}.tar.xz
+            dest: /root/osinfo-db-{{osinfo_db_version}}.tar.xz
+          when: not osinfo_db.stat.exists
+        - command: osinfo-db-import --local /root/osinfo-db-{{osinfo_db_version}}.tar.xz
+          when: not osinfo_db.stat.exists
+    - name: Remove existing VMs
+      block:
+        - virt: command=list_vms
+          register: current_vms
+        - virt: command=list_vms state=running
+          register: running_vms
+        - block:
+            - command: virsh destroy {{item}}
+              when: item in running_vms.list_vms
+              loop: '{{vms}}'
+            - shell: virsh undefine --storage vda --nvram {{item}} || virsh undefine --storage sda --nvram {{item}}
+              when: item in current_vms.list_vms
+              loop: '{{vms}}'
+    - name: Create cloud init ISO
+      block:
+        - file: path=/tmp/ci-{{item}} state=directory
+          loop: '{{vms}}'
+        - template:
+            src: files/cloud-init/meta-data.j2
+            dest: /tmp/ci-{{item}}/meta-data
+          loop: '{{vms}}'
+        - template:
+            src: files/cloud-init/user-data.j2
+            dest: /tmp/ci-{{item}}/user-data
+          loop: '{{vms}}'
+        - command: cloud-localds /var/lib/libvirt/images/{{item}}-cidata.iso /tmp/ci-{{item}}/user-data /tmp/ci-{{item}}/meta-data
+          loop: '{{vms}}'
+    - name: Create storage
+      command: qemu-img create -f qcow2 -b /var/lib/libvirt/images/ubuntu-{{ubuntu_version}}-server-cloudimg-arm64.img -F qcow2 /var/lib/libvirt/images/{{item}}.img 8G
+      loop: '{{vms}}'
+    - name: Create VMs
+      shell: |
+        virt-install \
+          --name {{item}} \
+          --memory 8192 \
+          --vcpus 2 \
+          --network network:default \
+          --os-variant=ubuntu{{ubuntu_version}} \
+          --import \
+          --nographics \
+          --noautoconsole \
+          --autostart \
+          --disk /var/lib/libvirt/images/{{item}}.img,bus=virtio \
+          --disk /var/lib/libvirt/images/{{item}}-cidata.iso,device=cdrom
+      loop: '{{vms}}'

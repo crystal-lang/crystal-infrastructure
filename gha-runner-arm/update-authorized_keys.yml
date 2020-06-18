@@ -1,0 +1,4 @@
+---
+- hosts: all
+  tasks:
+    - import_tasks: tasks/install_ssh_keys.yml

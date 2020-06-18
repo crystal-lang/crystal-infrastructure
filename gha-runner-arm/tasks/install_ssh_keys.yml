@@ -1,0 +1,8 @@
+---
+- name: Install SSH keys
+  block:
+    - file: path=/home/crystal/.ssh state=directory
+    - copy:
+        src: files/authorized_keys
+        dest: /home/crystal/.ssh/authorized_keys
+        mode: 0600

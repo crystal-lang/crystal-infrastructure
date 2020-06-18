@@ -1,0 +1,116 @@
+---
+- hosts: host
+  become: true
+  tasks:
+    - name: Remove cloud-init CDROMs
+      block:
+        - shell: virsh change-media --config --eject {{item}} sda || true
+          loop: "{{groups['vms']}}"
+- hosts: vms
+  tasks:
+    - import_tasks: tasks/install_ssh_keys.yml
+- hosts: vms
+  become: true
+  vars_prompt:
+    - name: ansible_become_pass
+      prompt: "Enter current VM password"
+      private: yes
+    - name: vm_password
+      prompt: "Enter new VM password"
+      private: yes
+      encrypt: "sha512_crypt"
+      salt_size: 7
+  tasks:
+    - name: Change password
+      block:
+        - user: name=root update_password=always password={{vm_password}}
+        - user: name=crystal update_password=always password={{vm_password}}
+- hosts: vms
+  become: true
+  tasks:
+    - import_tasks: tasks/setup_ssh.yml
+    - name: Disable cloud-init
+      block:
+        - file: path=/etc/cloud/cloud-init.disabled state=touch
+        - file: path=/etc/sudoers.d/90-cloud-init-users state=absent
+    - name: Install software
+      block:
+        - apt: update_cache=yes upgrade=yes
+        - package:
+            name:
+              - vim
+              - docker.io
+    - name: Create runner user
+      user: name=runner shell=/usr/sbin/nologin groups=docker
+    - name: Configure Docker
+      block:
+        - copy:
+            src: files/docker/daemon.json
+            dest: /etc/docker/daemon.json
+            mode: 0644
+          notify:
+            - restart docker
+        - getent: database=passwd key=runner
+          register: getent_runner
+        - template:
+            src: files/docker/subuid.j2
+            dest: /etc/subuid
+            mode: 0644
+          vars:
+            uid: "{{getent_runner.ansible_facts.getent_passwd.runner.1}}"
+          notify:
+            - restart docker
+        - template:
+            src: files/docker/subgid.j2
+            dest: /etc/subuid
+            mode: 0644
+          vars:
+            gid: "{{getent_runner.ansible_facts.getent_passwd.runner.2}}"
+          notify:
+            - restart docker
+    - name: Setup firewall
+      block:
+        - ufw: state=reset
+        - ufw: rule=allow name=OpenSSH
+        - ufw: state=enabled
+  handlers:
+    - import_tasks: tasks/handlers.yml
+- hosts: vms_aarch64
+  become: true
+  become_user: runner
+  vars:
+    runner_version: "2.263.0"
+  vars_prompt:
+    - name: github_token
+      prompt: Enter Github personal access token
+      private: yes
+  tasks:
+    - name: Install GHA Runner
+      block:
+        - file: path=/home/runner/actions-runner state=directory
+        - stat: path=/home/runner/actions-runner/actions-runner-linux-arm64-{{runner_version}}.tar.gz
+          register: runner_tarball
+        - block:
+            - get_url:
+                url: https://github.com/actions/runner/releases/download/v{{runner_version}}/actions-runner-linux-arm64-{{runner_version}}.tar.gz
+                dest: /home/runner/actions-runner/actions-runner-linux-arm64-{{runner_version}}.tar.gz
+            - unarchive: src=/home/runner/actions-runner/actions-runner-linux-arm64-{{runner_version}}.tar.gz dest=/home/runner/actions-runner remote_src=yes
+            - uri:
+                url: https://api.github.com/repos/crystal-lang/crystal/actions/runners/registration-token
+                method: POST
+                status_code: 201
+                headers:
+                  accept: application/vnd.github.everest-preview+json
+                  authorization: token {{github_token}}
+              register: registration_token
+            - command: /home/runner/actions-runner/config.sh --unattended --url https://github.com/crystal-lang/crystal --replace --token {{registration_token.json.token}}
+            - block:
+                - command:
+                    cmd: /home/runner/actions-runner/svc.sh install runner
+                    chdir: /home/runner/actions-runner
+                - command:
+                    cmd: /home/runner/actions-runner/svc.sh start
+                    chdir: /home/runner/actions-runner
+              become: true
+              become_user: root
+          when: not runner_tarball.stat.exists

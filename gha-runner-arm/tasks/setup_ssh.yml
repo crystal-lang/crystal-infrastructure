@@ -1,0 +1,15 @@
+---
+- name: Lock down sshd
+  block:
+    - lineinfile:
+        path: /etc/ssh/sshd_config
+        regex: PermitRootLogin
+        line: PermitRootLogin no
+      notify:
+        - restart sshd
+    - lineinfile:
+        path: /etc/ssh/sshd_config
+        regex: PasswordAuthentication
+        line: PasswordAuthentication no
+      notify:
+        - restart sshd
