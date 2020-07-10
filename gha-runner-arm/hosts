@@ -2,10 +2,7 @@
 arm.build.crystal-lang.org ansible_user=crystal
 
 [vms_aarch64]
-gha-runner-aarch64-1
-gha-runner-aarch64-2
-gha-runner-aarch64-3
-gha-runner-aarch64-4
+gha-runner-aarch64-[1:8]
 
 [vms:children]
 vms_aarch64
