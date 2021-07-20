@@ -1,7 +1,7 @@
 #!/bin/sh
 set -xe
 
-version=0.35.0
+version=1.0.0
 tag=jhass/crystal:$version-build
 static_build=crystal-$version-aarch64-alpine-linux-musl
 tarball=$static_build.tar.gz
