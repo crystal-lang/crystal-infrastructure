@@ -59,7 +59,7 @@
         virt-install \
           --name {{item}} \
           --memory 8192 \
-          --vcpus 2 \
+          --vcpus 4 \
           --network network:default \
           --os-variant=ubuntu{{ubuntu_version}} \
           --import \

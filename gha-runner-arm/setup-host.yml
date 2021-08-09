@@ -25,6 +25,7 @@
               - osinfo-db-tools
               - qemu-efi-aarch64
               - qemu-efi-arm
+              - ufw
     - name: Setup NSS config for libvirt
       replace:
         path: /etc/nsswitch.conf

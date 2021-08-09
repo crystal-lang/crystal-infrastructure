@@ -1,12 +1,12 @@
 [host]
-arm.build.crystal-lang.org ansible_user=crystal
+arm3.build.crystal-lang.org ansible_user=crystal
 
 [vms_aarch64]
-gha-runner-aarch64-[1:8]
+gha-runner-aarch64-3-[1:8]
 
 [vms:children]
 vms_aarch64
 
 [vms:vars]
 ansible_user=crystal
-ansible_ssh_common_args='-J crystal@arm.build.crystal-lang.org'
+ansible_ssh_common_args='-J crystal@arm3.build.crystal-lang.org'

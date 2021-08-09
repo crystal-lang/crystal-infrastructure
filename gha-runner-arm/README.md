@@ -2,7 +2,7 @@
 
 ### How to use
 
-1. Setup a basic Ubuntu 18.04 install on the host:
+1. Setup a basic Ubuntu 20.04 install on the host:
    * Default user username: `crystal`
    * Set output of `pwgen 20 1` as password, share with other admins.
    * Ensure OpenSSH server is installed as additional software.
@@ -13,7 +13,7 @@
    * This recreates the VMs if they already exist.
 1. Obtain a Github personal access token that can create self hosted runners on crystal-lang/crystal.
 1. Once the VMs booted, run `ansible-playbook setup-vms.yml --ask-become-pass`.
-   * You can watch them boot with `virsh console  <vmname>`, use `Ctrl+]` to exit.
+   * You can watch them boot with `virsh console <vmname>`, use `Ctrl+]` to exit.
    * The initial VM password after the previous step is `changeme`.
    * When prompted for the new password, use same password as for the host above.
 

@@ -1,6 +1,6 @@
 # Github usernames of people that should have access to this machine
 
-ADMINS = %w(jhass bcardiff waj)
+ADMINS = %w(beta-ziliani jhass straight-shoota)
 DIR    = "files"
 
 require "http/client"
