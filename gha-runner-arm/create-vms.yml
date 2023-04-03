@@ -52,13 +52,13 @@
         - command: cloud-localds /var/lib/libvirt/images/{{item}}-cidata.iso /tmp/ci-{{item}}/user-data /tmp/ci-{{item}}/meta-data
           loop: '{{vms}}'
     - name: Create storage
-      command: qemu-img create -f qcow2 -b /var/lib/libvirt/images/ubuntu-{{ubuntu_version}}-server-cloudimg-arm64.img -F qcow2 /var/lib/libvirt/images/{{item}}.img 8G
+      command: qemu-img create -f qcow2 -b /var/lib/libvirt/images/ubuntu-{{ubuntu_version}}-server-cloudimg-arm64.img -F qcow2 /var/lib/libvirt/images/{{item}}.img 32G
       loop: '{{vms}}'
     - name: Create VMs
       shell: |
         virt-install \
           --name {{item}} \
-          --memory 8192 \
+          --memory 16384 \
           --vcpus 4 \
           --network network:default \
           --os-variant=ubuntu{{ubuntu_version}} \
